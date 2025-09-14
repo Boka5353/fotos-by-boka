@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<title>Kolorowe Portfolio</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
+<style>
+body { font-family:'Montserrat',sans-serif; margin:0; background:linear-gradient(135deg,#89f7fe,#66a6ff);}
+.container{display:flex;justify-content:center;align-items:center;height:100vh;}
+.box{background:#fff;padding:30px;border-radius:15px;box-shadow:0 8px 25px rgba(0,0,0,0.2);width:400px;text-align:center;animation:fadeIn 1s ease-in;}
+h1,h2{margin-bottom:20px;}
+input,button,select,textarea{width:100%;padding:12px;margin:8px 0;border:1px solid #ccc;border-radius:8px;}
+button{background:linear-gradient(90deg,#43cea2,#185a9d);color:white;font-weight:600;border:none;cursor:pointer;}
+button:hover{opacity:0.9;}
+.panel{display:none;padding:20px;}
+.photos{display:flex;flex-wrap:wrap;gap:10px;margin-top:15px;}
+.photo{position:relative;}
+.photo img{width:150px;border-radius:8px;}
+.watermark{position:absolute;bottom:5px;right:5px;background:rgba(0,0,0,0.5);color:#fff;font-size:12px;padding:2px 5px;border-radius:3px;}
+@keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
+</style>
+</head>
+<body>
+
+<div class="container" id="loginBox">
+  <div class="box">
+    <h2>🔑 Logowanie</h2>
+    <input type="text" id="login" placeholder="Login">
+    <input type="password" id="haslo" placeholder="Hasło">
+    <button id="loginBtn">Zaloguj</button>
+  </div>
+</div>
+
+<div class="panel" id="fotografPanel">
+<h1>📸 Panel Fotografa</h1>
+
+<h2>Dodaj sesję</h2>
+<input type="text" id="nazwaSesji" placeholder="Nazwa sesji">
+<button id="dodajSesjeBtn">Dodaj sesję</button>
+
+<h2>Dodaj klienta</h2>
+<select id="wyborSesji"></select>
+<input type="text" id="loginKlient" placeholder="Login klienta">
+<input type="password" id="hasloKlient" placeholder="Hasło klienta">
+<input type="text" id="kodRabatu" placeholder="Kod rabatowy">
+<button id="dodajKlientaBtn">Dodaj klienta</button>
+
+<h2>Wyślij wiadomość do klienta</h2>
+<input type="email" id="emailKlientaWiadomosc" placeholder="Adres e-mail klienta">
+<textarea id="wiadomoscKlienta" rows="6" placeholder="Treść wiadomości"></textarea>
+<button id="wyslijWiadomoscBtn">Wyślij wiadomość</button>
+
+<h2>Dodaj zdjęcia</h2>
+<select id="wyborSesjiZdjecia"></select>
+<input type="file" id="fileInput" multiple accept="image/*">
+<div id="photos" class="photos"></div>
+
+<h2>Lista klientów</h2>
+<ul id="listaKlientow"></ul>
+
+<button onclick="wyloguj()">🚪 Wyloguj</button>
+</div>
+
+<div class="panel" id="klientPanel">
+<h1>👤 Panel Klienta</h1>
+<p>Twoje sesje:</p>
+<div id="sesjeKlienta"></div>
+
+<h2>Odblokuj zdjęcia</h2>
+<input type="text" id="kod" placeholder="Kod rabatowy">
+<button id="sprawdzKodBtn">Odblokuj</button>
+
+<div id="photosKlient" class="photos"></div>
+
+<button onclick="wyloguj()">🚪 Wyloguj</button>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded',()=>{
+
+let sesje=JSON.parse(localStorage.getItem('sesje'))||[];
+let klienci=JSON.parse(localStorage.getItem('klienci'))||[];
+
+function zapisz(){
+localStorage.setItem('sesje',JSON.stringify(sesje));
+localStorage.setItem('klienci',JSON.stringify(klienci));
+pokazSesje(); pokazKlientow(); pokazZdjecia();
+}
+
+function zaloguj(){
+const login=document.getElementById('login').value;
+const haslo=document.getElementById('haslo').value;
+if(login==='fotograf'&&haslo==='1234'){
+document.getElementById('loginBox').style.display='none';
+document.getElementById('fotografPanel').style.display='block';
+pokazSesje(); pokazKlientow(); pokazZdjecia();
+return;
+}
+let znaleziony=klienci.find(k=>k.login===login&&k.haslo===haslo);
+if(znaleziony){
+document.getElementById('loginBox').style.display='none';
+document.getElementById('klientPanel').style.display='block';
+localStorage.setItem('zalogowanyKlient',JSON.stringify(znaleziony));
+pokazSesjeKlienta();
+return;
+}
+alert('❌ Zły login lub hasło');
+}
+
+function dodajSesje(){
+const nazwa=document.getElementById('nazwaSesji').value;
+if(!nazwa)return;
+sesje.push({nazwa,klienci:[],zdjecia:[]});
+zapisz();
+}
+
+function dodajKlienta(){
+const sesja=document.getElementById('wyborSesji').value;
+const login=document.getElementById('loginKlient').value;
+const haslo=document.getElementById('hasloKlient').value;
+const kod=document.getElementById('kodRabatu').value;
+if(!sesja||!login||!haslo||!kod)return;
+let s=sesje.find(x=>x.nazwa===sesja);
+s.klienci.push({login,haslo,kod,zdjecia:[]});
+klienci.push({login,haslo,kod,sesja:s.nazwa});
+zapisz();
+}
+
+function pokazSesje(){
+const sel=document.getElementById('wyborSesji');
+const sel2=document.getElementById('wyborSesjiZdjecia');
+if(!sel||!sel2)return;
+sel.innerHTML=''; sel2.innerHTML='';
+sesje.forEach(s=>{
+let opt=document.createElement('option');opt.value=s.nazwa;opt.textContent=s.nazwa;sel.appendChild(opt);
+let opt2=document.createElement('option');opt2.value=s.nazwa;opt2.textContent=s.nazwa;sel2.appendChild(opt2);
+});
+}
+
+document.getElementById('fileInput').addEventListener('change',e=>{
+const sesja=document.getElementById('wyborSesjiZdjecia').value;
+let s=sesje.find(x=>x.nazwa===sesja);
+[...e.target.files].forEach(file=>{
+let r=new FileReader();
+r.onload=ev=>{s.zdjecia.push(ev.target.result);zapisz();};
+r.readAsDataURL(file);
+});
+});
+
+function pokazZdjecia(){
+const sesja=document.getElementById('wyborSesjiZdjecia').value;
+let s=sesje.find(x=>x.nazwa===sesja);
+let photosDiv=document.getElementById('photos');
+photosDiv.innerHTML='';
+if(!s)return;
+s.zdjecia.forEach(url=>{
+let div=document.createElement('div');div.className='photo';
+div.innerHTML=`<img src="${url}"><div class="watermark">Kolorowe Portfolio</div>`;
+photosDiv.appendChild(div);
+});
+}
+
+function pokazKlientow(){
+let lista=document.getElementById('listaKlientow');
+if(!lista)return;
+lista.innerHTML='';
+sesje.forEach(s=>s.klienci.forEach(k=>{
+let li=document.createElement('li');li.textContent=`${k.login} | Sesja: ${s.nazwa} | Kod: ${k.kod}`;lista.appendChild(li);
+}));
+}
+
+function pokazSesjeKlienta(){
+const klient=JSON.parse(localStorage.getItem('zalogowanyKlient'));
+let container=document.getElementById('sesjeKlienta');
+container.innerHTML='';
+let sesja=sesje.find(s=>s.nazwa===klient.sesja);
+if(!sesja)return;
+document.getElementById('photosKlient').innerHTML='';
+sesja.zdjecia.forEach(url=>{
+let div=document.createElement('div');div.className='photo';
+div.innerHTML=`<img src="${url}"><div class="watermark">Kolorowe Portfolio</div>`;
+document.getElementById('photosKlient').appendChild(div);
+});
+}
+
+function sprawdzKod(){
+const kod=document.getElementById('kod').value;
+const klient=JSON.parse(localStorage.getItem('zalogowanyKlient'));
+if(kod===klient.kod){
+document.querySelectorAll('#photosKlient .watermark').forEach(w=>w.style.display='none');
+alert('✅ Zdjęcia odblokowane!');
+}else{
+alert('❌ Zły kod!');
+}
+}
+
+function wyloguj(){
+document.getElementById('fotografPanel').style.display='none';
+document.getElementById('klientPanel').style.display='none';
+document.getElementById('loginBox').style.display='flex';
+localStorage.removeItem('zalogowanyKlient');
+}
+
+// Podpięcie przycisków
+document.getElementById('loginBtn').addEventListener('click',zaloguj);
+document.getElementById('dodajSesjeBtn').addEventListener('click',dodajSesje);
+document.getElementById('dodajKlientaBtn').addEventListener('click',dodajKlienta);
+document.getElementById('sprawdzKodBtn').addEventListener('click',sprawdzKod);
+
+// Wysyłanie wiadomości e-mail z pełnym podsumowaniem
+document.getElementById('wyslijWiadomoscBtn').addEventListener('click',()=>{
+    const email=document.getElementById('emailKlientaWiadomosc').value;
+    if(!email) return alert('Wpisz adres e-mail klienta!');
+    
+    const sesjaName = document.getElementById('wyborSesji').value;
+    const sesja = sesje.find(s=>s.nazwa===sesjaName);
+    if(!sesja) return alert('Wybierz sesję!');
+    
+    const login = document.getElementById('loginKlient').value;
+    const klientObj = sesja.klienci.find(k=>k.login===login);
+    if(!klientObj) return alert('Nie znaleziono klienta w tej sesji!');
+    
+    const wiadomosc = document.getElementById('wiadomoscKlienta').value;
+    if(!wiadomosc) return alert('Wpisz treść wiadomości!');
+    
+    const subject = encodeURIComponent(`Nowa sesja: ${sesjaName}`);
+    const bodyText = `${wiadomosc}\n\nLogin: ${klientObj.login}\nHasło: ${klientObj.haslo}\nSesja: ${sesjaName}\nW pakiecie: 15 zdjęć\nDodatkowe zdjęcia: 25 zł/szt.`;
+    const body = encodeURIComponent(bodyText);
+    
+    window.location.href=`mailto:${email}?subject=${subject}&body=${body}`;
+    alert('📧 Wiadomość przygotowana w e-mailu!');
+});
+});
+</script>
+
+</body>
+</html>
